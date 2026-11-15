@@ -8,7 +8,10 @@ const MEMES = [
     "dog2.jpg",
     "horse1.jpg",
     "kermit.png",
-    "and_i_walk_in.jpeg"
+    "and_i_walk_in.jpeg",
+    "meme1.gif",
+    "meme2.gif",
+    "meme3.gif"
 ];
 
 // sound effects
