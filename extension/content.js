@@ -257,12 +257,23 @@ function makeButton(cls) {
     return b;
 }
 
+// ---------- Stupid stats (shown in the popup) ----------
+// Counts every popup spawned, in total and per website.
+function recordStat() {
+    const site = location.hostname || "unknown";
+    chrome.storage.local.get({ count: 0, sites: {} }, (s) => {
+        s.sites[site] = (s.sites[site] || 0) + 1;
+        chrome.storage.local.set({ count: s.count + 1, sites: s.sites });
+    });
+}
+
 function spawnImage(clickX, clickY) {
     if (isFadingOut) return;
     if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
     injectStyles();
     ensureIdleChecker();
     playRandomSound();
+    recordStat();
 
     if (typeof clickX === "number" && typeof clickY === "number") {
         mouseX = clickX;

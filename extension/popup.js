@@ -70,6 +70,46 @@ async function init() {
             setStatus(UNREACHABLE);
         }
     });
+
+    // ---------- Stupid stats ----------
+    renderStats();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && (changes.count || changes.sites)) renderStats();
+    });
+    document.getElementById("resetStats").addEventListener("click", async () => {
+        await chrome.storage.local.set({ count: 0, sites: {} });
+        setStatus("Stats wiped. Your sins are forgiven 🙏");
+    });
+}
+
+// Completely made-up numbers, presented with total confidence.
+const KCAL_PER_CREATURE = 0.0731;   // "lab tested"
+const KCAL_PER_GRAPE = 3.4;
+
+const RANKS = [
+    [0, "Innocent Bystander"],
+    [1, "Curious Clicker"],
+    [10, "Cat Enjoyer"],
+    [25, "Menace to Society"],
+    [50, "Certified Chaos Agent"],
+    [100, "Feline Overlord"],
+    [250, "Click Deity"],
+    [500, "Please Touch Grass"],
+];
+
+async function renderStats() {
+    const { count, sites } = await chrome.storage.local.get({ count: 0, sites: {} });
+    const kcal = count * KCAL_PER_CREATURE;
+
+    document.getElementById("statCount").textContent = count.toLocaleString();
+    document.getElementById("statCalories").textContent = kcal.toFixed(3) + " kcal";
+    document.getElementById("statGrapes").textContent = (kcal / KCAL_PER_GRAPE).toFixed(4) + " grapes";
+
+    const top = Object.entries(sites).sort((a, b) => b[1] - a[1])[0];
+    document.getElementById("statSite").textContent = top ? `${top[0]} (${top[1]})` : "none yet";
+
+    const rank = RANKS.filter(([min]) => count >= min).pop()[1];
+    document.getElementById("statRank").textContent = "Rank: " + rank;
 }
 
 init();
