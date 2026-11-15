@@ -274,7 +274,6 @@ function makeButton(cls) {
     return b;
 }
 
-<<<<<<< HEAD
 function spawnImageInTop(x, y) {
     if (!isTop) {
         try {
@@ -283,14 +282,16 @@ function spawnImageInTop(x, y) {
         return;
     }
     doSpawn(x, y);
-=======
+}
+
 function recordStat() {
-    const site = location.hostname || "unknown";
-    chrome.storage.local.get({ count: 0, sites: {} }, (s) => {
-        s.sites[site] = (s.sites[site] || 0) + 1;
-        chrome.storage.local.set({ count: s.count + 1, sites: s.sites });
-    });
->>>>>>> aa5834a6e3e8c431762ba8f2e07a6b203c1a8f48
+    try {
+        const site = location.hostname || "unknown";
+        chrome.storage.local.get({ count: 0, sites: {} }, (s) => {
+            s.sites[site] = (s.sites[site] || 0) + 1;
+            chrome.storage.local.set({ count: s.count + 1, sites: s.sites });
+        });
+    } catch (_) {}
 }
 
 function doSpawn(x, y) {
@@ -299,6 +300,7 @@ function doSpawn(x, y) {
     injectStyles();
     ensureIdleChecker();
     playRandomSound();
+    recordStat();
 
     if (typeof x === "number" && typeof y === "number" && x > 0 && y > 0) {
         mouseX = x;
@@ -403,8 +405,6 @@ document.addEventListener("keydown", (e) => {
     onUserAction(x, y);
 }, true);
 
-<<<<<<< HEAD
-
 try {
     chrome.storage.local.get({ enabled: true }, (data) => { enabled = data.enabled; });
 } catch (_) {}
@@ -424,22 +424,3 @@ try {
         return true;
     });
 } catch (_) {}
-=======
-chrome.storage.local.get({ enabled: true }, (data) => {
-    enabled = data.enabled;
-});
- 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "toggle") {
-        enabled = msg.enabled ?? !enabled;
-        sendResponse({ enabled });
-    } else if (msg.type === "clear") {
-        clearAllPopups();
-        sendResponse({ cleared: true });
-    } else if (msg.type === "test-fx") {
-        spawnImage(window.innerWidth / 2, window.innerHeight / 2);
-        sendResponse({ ok: true });
-    }
-    return true;
-});
->>>>>>> aa5834a6e3e8c431762ba8f2e07a6b203c1a8f48
