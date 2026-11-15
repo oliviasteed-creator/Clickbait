@@ -1,5 +1,5 @@
 let enabled = true;
-const MAX_POPUPS = 60;
+const MAX_POPUPS = 100;
 const MEMES = [
     "cat_image.jpeg",
     "cat2.jpg",
@@ -341,10 +341,20 @@ document.addEventListener("click", (e) => {
     spawnImage(e.clientX, e.clientY);
 }, true);
 
+document.addEventListener("keydown", (e) => {
+    if (!chrome.runtime?.id) return;
+    if (!enabled) return;
+    // skip pure modifiers so Shift/Ctrl alone don't fire
+    if (["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(e.key)) return;
+    spawnImage(
+        mouseX > 0 ? mouseX : window.innerWidth / 2,
+        mouseY > 0 ? mouseY : window.innerHeight / 2
+    );
+}, true);
 chrome.storage.local.get({ enabled: true }, (data) => {
     enabled = data.enabled;
 });
-
+ 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "toggle") {
         enabled = msg.enabled ?? !enabled;
