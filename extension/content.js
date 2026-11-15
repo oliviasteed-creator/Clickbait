@@ -1,16 +1,104 @@
 let enabled = true;
 const MAX_POPUPS = 60;
-
 const MEMES = ["cat_image.jpeg"];
 
-//xp window style... ignore that it is in content.js LOL
+// Fleeing behavior settings
+const FLEE_RADIUS = 280;
+const MAX_SPEED = 20;
+const IDLE_CLEAR_MS = 15000; // 15s of no mouse movement → clear all
+
+let mouseX = -9999;
+let mouseY = -9999;
+let lastMouseMoveTime = Date.now();
+const activeFleeingBoxes = new Set();
+let animationRunning = false;
+let idleCheckInterval = null;
+
+// Track cursor + last movement time
+window.addEventListener("mousemove", (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    lastMouseMoveTime = Date.now();
+}, { capture: true, passive: true });
+
+function clearAllPopups() {
+    activeFleeingBoxes.clear();
+    document.querySelectorAll(".popup-image").forEach((el) => el.remove());
+}
+
+function updateFleeingPopups() {
+    const now = Date.now();
+
+    // Idle timeout
+    if (now - lastMouseMoveTime >= IDLE_CLEAR_MS) {
+        clearAllPopups();
+        animationRunning = false;
+        return;
+    }
+
+    for (const box of activeFleeingBoxes) {
+        if (!box.isConnected) {
+            activeFleeingBoxes.delete(box);
+            continue;
+        }
+
+        const width = box.offsetWidth || 168;
+        const height = box.offsetHeight || 180;
+        const centerX = box._posX + width / 2;
+        const centerY = box._posY + height / 2;
+
+        const dx = centerX - mouseX;
+        const dy = centerY - mouseY;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance < FLEE_RADIUS && distance > 0) {
+            const force = (FLEE_RADIUS - distance) / FLEE_RADIUS;
+            const speed = Math.max(3, force * MAX_SPEED);
+
+            box._posX += (dx / distance) * speed;
+            box._posY += (dy / distance) * speed;
+
+            // Clamp inside viewport
+            const maxX = Math.max(0, window.innerWidth - width);
+            const maxY = Math.max(0, window.innerHeight - height);
+            box._posX = Math.min(Math.max(0, box._posX), maxX);
+            box._posY = Math.min(Math.max(0, box._posY), maxY);
+
+            box.style.left = Math.round(box._posX) + "px";
+            box.style.top = Math.round(box._posY) + "px";
+        }
+    }
+
+    if (activeFleeingBoxes.size > 0) {
+        requestAnimationFrame(updateFleeingPopups);
+    } else {
+        animationRunning = false;
+    }
+}
+
+function startFleeLoop() {
+    if (!animationRunning) {
+        animationRunning = true;
+        requestAnimationFrame(updateFleeingPopups);
+    }
+}
+
+function ensureIdleChecker() {
+    if (idleCheckInterval) return;
+    idleCheckInterval = setInterval(() => {
+        if (Date.now() - lastMouseMoveTime >= IDLE_CLEAR_MS && activeFleeingBoxes.size > 0) {
+            clearAllPopups();
+        }
+    }, 1000);
+}
+
 function injectStyles() {
     if (document.getElementById("xp-popup-styles")) return;
     const style = document.createElement("style");
     style.id = "xp-popup-styles";
     style.textContent = `
     .popup-image {
-        position: fixed;
+        position: fixed !important;
         z-index: 2147483647;
         visibility: hidden;
         box-sizing: border-box;
@@ -60,7 +148,6 @@ function injectStyles() {
     .popup-image .xp-close {
         background: radial-gradient(circle at 30% 25%, #e9957b 0%, #d9482a 55%, #b8300f 100%);
     }
-    /* minimize: little bar at bottom-left */
     .popup-image .xp-min::after {
         content: "";
         position: absolute;
@@ -68,7 +155,6 @@ function injectStyles() {
         width: 7px; height: 3px;
         background: #fff;
     }
-    /* maximize: square with thick top edge */
     .popup-image .xp-max::after {
         content: "";
         position: absolute;
@@ -78,7 +164,6 @@ function injectStyles() {
         border: 1px solid #fff;
         border-top-width: 3px;
     }
-    /* close: X */
     .popup-image .xp-close::after {
         content: "\\2715";
         position: absolute;
@@ -105,20 +190,27 @@ function makeButton(cls) {
     return b;
 }
 
-function spawnImage() {
+function spawnImage(clickX, clickY) {
     if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
     injectStyles();
+    ensureIdleChecker();
+
+    // Seed mouse from the click
+    if (typeof clickX === "number" && typeof clickY === "number") {
+        mouseX = clickX;
+        mouseY = clickY;
+        lastMouseMoveTime = Date.now();
+    }
 
     const box = document.createElement("div");
     box.className = "popup-image";
 
-    // title bar
     const titlebar = document.createElement("div");
     titlebar.className = "xp-titlebar";
 
     const icon = document.createElement("span");
     icon.className = "xp-icon";
-    icon.textContent = "\u2606"; // ☆
+    icon.textContent = "\u2606";
     titlebar.appendChild(icon);
 
     const buttons = document.createElement("div");
@@ -128,12 +220,12 @@ function spawnImage() {
     const closeBtn = makeButton("xp-close");
     closeBtn.onclick = (e) => {
         e.stopPropagation();
+        activeFleeingBoxes.delete(box);
         box.remove();
     };
     buttons.append(minBtn, maxBtn, closeBtn);
     titlebar.appendChild(buttons);
 
-    // body with the meme
     const body = document.createElement("div");
     body.className = "xp-body";
 
@@ -143,9 +235,14 @@ function spawnImage() {
     img.onload = () => {
         const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
         const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
-        box.style.left = Math.random() * maxX + "px";
-        box.style.top = Math.random() * maxY + "px";
+        box._posX = Math.random() * maxX;
+        box._posY = Math.random() * maxY;
+        box.style.left = Math.round(box._posX) + "px";
+        box.style.top = Math.round(box._posY) + "px";
         box.style.visibility = "visible";
+
+        activeFleeingBoxes.add(box);
+        startFleeLoop();
     };
     img.onerror = () => {
         console.error("Meme failed to load:", img.src);
@@ -158,20 +255,29 @@ function spawnImage() {
     document.body.appendChild(box);
 }
 
-// click listener
+// Click → spawn (skip clicks on existing popups)
 document.addEventListener("click", (e) => {
     if (!enabled) return;
     if (e.target.closest && e.target.closest(".popup-image")) return;
-    spawnImage();
+    spawnImage(e.clientX, e.clientY);
 }, true);
 
-// messages from other scripts
+// Load enabled state from storage
+chrome.storage.local.get({ enabled: true }, (data) => {
+    enabled = data.enabled;
+});
+
+// Messages from popup / background
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "toggle") {
         enabled = msg.enabled ?? !enabled;
         sendResponse({ enabled });
     } else if (msg.type === "clear") {
-        document.querySelectorAll(".popup-image").forEach((el) => el.remove());
+        clearAllPopups();
         sendResponse({ cleared: true });
+    } else if (msg.type === "test-fx") {
+        spawnImage(window.innerWidth / 2, window.innerHeight / 2);
+        sendResponse({ ok: true });
     }
+    return true;
 });

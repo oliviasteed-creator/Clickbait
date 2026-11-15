@@ -1,67 +1,69 @@
-let enabled = true;
-let count = 0;
-const MAX_POPUPS = 10;
+const enabledEl = document.getElementById("enabled");
+const volumeEl = document.getElementById("volume");
+const soundPackEl = document.getElementById("soundPack");
+const imagePackEl = document.getElementById("imagePack");
+const clearBtn = document.getElementById("clear");
+const statusEl = document.getElementById("status");
 
-const MEMES = ["cat_image.jpeg"]
-
-function randomImage() {
-    const img = document.createElement("img");
-    const choice = MEMES[Math.floor(Math.random() * MEMES.length)];
-    img.src = chrome.runtime.getURL("img/" + choice);
-    // only limit the width; height: auto keeps the original ratio
-    img.style.cssText = "display:block;width:150px;height:auto;";
-    return img;
+function setStatus(text, isError = false) {
+    statusEl.textContent = text || "";
+    statusEl.style.color = isError ? "#c00" : "";
 }
 
-function spawnImage() {
-    if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
-
-    const box = document.createElement("div");
-    box.className = "popup-image";
-    box.style.cssText =
-        "position:fixed;z-index:2147483647;background:#fff;padding:4px;" +
-        "border:3px solid #000;border-radius:8px;visibility:hidden;";
-
-    // play random sound -- meme
-    const img = randomImage();
-    box.appendChild(img);
-
-    const close = document.createElement("button");
-    close.textContent = "x";
-    close.style.cssText = "position:absolute;top:-12px;right:-12px;cursor:pointer;";
-    close.onclick = (e) => {
-        e.stopPropagation();
-        box.remove();
-    };
-    box.appendChild(close);
-
-    document.body.appendChild(box);
-
-    // once the image has loaded, we know its real size, so place it randomly
-    img.onload = () => {
-        const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
-        const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
-        box.style.left = Math.random() * maxX + "px";
-        box.style.top = Math.random() * maxY + "px";
-        box.style.visibility = "visible";
-    };
-    count++;
-}
-
-// event listener for clicks
-document.addEventListener("click", (e) => {
-    if(!enabled) return; 
-    if(e.target.closest && e.target.closest('.popup-image')) return; // ignores when user clicks on popup imgs
-    spawnImage(e.clientX, e.clientY);
-}, true);
-
-// listen for messages from other scripts
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "toggle") {
-        enabled = msg.enabled ?? !enabled;
-        sendResponse({ enabled });
-    } else if (msg.type === "clear") {
-        document.querySelectorAll(".popup-image").forEach((el) => el.remove());
-        sendResponse({ cleared: true });
+chrome.storage.local.get(
+    { enabled: true, volume: 0.4, soundPack: "synth", imagePack: "mixed" },
+    (data) => {
+        enabledEl.checked = data.enabled;
+        volumeEl.value = data.volume;
+        soundPackEl.value = data.soundPack;
+        imagePackEl.value = data.imagePack;
     }
+);
+
+enabledEl.addEventListener("change", () => {
+    const enabled = enabledEl.checked;
+    chrome.storage.local.set({ enabled });
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (!tab?.id || tab.url?.startsWith("chrome://") || tab.url?.startsWith("chrome-extension://")) {
+            setStatus("Can't control this page", true);
+            return;
+        }
+        chrome.tabs.sendMessage(tab.id, { type: "toggle", enabled }, () => {
+            if (chrome.runtime.lastError) {
+                setStatus(chrome.runtime.lastError.message, true);
+            } else {
+                setStatus(enabled ? "Enabled" : "Disabled");
+            }
+        });
+    });
+});
+
+volumeEl.addEventListener("input", () => {
+    chrome.storage.local.set({ volume: Number(volumeEl.value) });
+});
+
+soundPackEl.addEventListener("change", () => {
+    chrome.storage.local.set({ soundPack: soundPackEl.value });
+});
+
+imagePackEl.addEventListener("change", () => {
+    chrome.storage.local.set({ imagePack: imagePackEl.value });
+});
+
+clearBtn.addEventListener("click", () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (!tab?.id || tab.url?.startsWith("chrome://") || tab.url?.startsWith("chrome-extension://")) {
+            setStatus("Can't clear on this page", true);
+            return;
+        }
+        chrome.tabs.sendMessage(tab.id, { type: "clear" }, () => {
+            if (chrome.runtime.lastError) {
+                setStatus(chrome.runtime.lastError.message, true);
+            } else {
+                setStatus("Cleared");
+            }
+        });
+    });
 });
