@@ -13,10 +13,10 @@ const MEMES = [
 
 // ---------- Sound effects (custom files only) ----------
 const SOUND_FILES = [
-    "35f4997a-677c-4e79-a2b8-f33b688d5233.mp3",
-    "707db471-c834-494e-a3d9-ada985203ef6.mp3",
-    "7734a0d8-d26f-49b1-9b87-45e8272b1183.mp3",
-    "fb64d9f6-7584-4a3f-930b-ba6094d37fd5.mp3",
+    "fah.mp3",
+    "goofy.mp3",
+    "uwu.mp3",
+    "vineboom.mp3",
 ];
 
 let volume = 0.5;
