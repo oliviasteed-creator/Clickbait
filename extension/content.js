@@ -8,15 +8,16 @@ const MEMES = [
     "dog2.jpg",
     "horse1.jpg",
     "kermit.png"
+    "and_i_walk_in.jpeg"
 ];
 
-// ---------- Sound effects (custom files only) ----------
+// sound effects
 const SOUND_FILES = [
     "fah.mp3",
     "goofy.mp3",
     "uwu.mp3",
     "vineboom.mp3",
-];
+]; 
 
 let volume = 0.5;
 chrome.storage.local.get({ volume }, (s) => { volume = s.volume; });
