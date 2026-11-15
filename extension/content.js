@@ -10,9 +10,6 @@ const MEMES = [
     "kermit.png"
 ];
 
-<<<<<<< HEAD
-// fading 
-=======
 // ---------- Sound effects (custom files only) ----------
 const SOUND_FILES = [
     "fah.mp3",
@@ -36,7 +33,6 @@ function playRandomSound() {
 }
 
 // Fleeing behavior settings
->>>>>>> cdef6d45d1800bbefed184dccf37a9d62d41250b
 const FLEE_RADIUS = 280;
 const MAX_SPEED = 20;
 const IDLE_CLEAR_MS = 10000;   // stop mouse for 10s → fade everything out
