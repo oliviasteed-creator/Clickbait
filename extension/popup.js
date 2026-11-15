@@ -1,67 +1,75 @@
-let enabled = true;
-let count = 0;
-const MAX_POPUPS = 10;
+// Popup logic: loads/saves preferences in chrome.storage and sends
+// messages to the content script running in the current tab.
+//
+// Messages the content script understands (see content.js):
+//   { type: "toggle", enabled: true/false }  -> replies { enabled }
+//   { type: "clear" }                        -> replies { cleared: true }
 
-const MEMES = ["cat_image.jpeg"]
+// Every preference and its default. Each key matches an element id in popup.html.
+const DEFAULTS = {
+    enabled: true,
+    volume: 0.5,
+    soundPack: "synth",
+    imagePack: "mixed",
+};
 
-function randomImage() {
-    const img = document.createElement("img");
-    const choice = MEMES[Math.floor(Math.random() * MEMES.length)];
-    img.src = chrome.runtime.getURL("img/" + choice);
-    // only limit the width; height: auto keeps the original ratio
-    img.style.cssText = "display:block;width:150px;height:auto;";
-    return img;
+const statusEl = document.getElementById("status");
+
+function setStatus(text) {
+    statusEl.textContent = text;
 }
 
-function spawnImage() {
-    if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
-
-    const box = document.createElement("div");
-    box.className = "popup-image";
-    box.style.cssText =
-        "position:fixed;z-index:2147483647;background:#fff;padding:4px;" +
-        "border:3px solid #000;border-radius:8px;visibility:hidden;";
-
-    // play random sound -- meme
-    const img = randomImage();
-    box.appendChild(img);
-
-    const close = document.createElement("button");
-    close.textContent = "x";
-    close.style.cssText = "position:absolute;top:-12px;right:-12px;cursor:pointer;";
-    close.onclick = (e) => {
-        e.stopPropagation();
-        box.remove();
-    };
-    box.appendChild(close);
-
-    document.body.appendChild(box);
-
-    // once the image has loaded, we know its real size, so place it randomly
-    img.onload = () => {
-        const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
-        const maxY = Math.max(0, window.innerHeight - box.offsetHeight);
-        box.style.left = Math.random() * maxX + "px";
-        box.style.top = Math.random() * maxY + "px";
-        box.style.visibility = "visible";
-    };
-    count++;
+// Send a message to the content script in the active tab.
+async function sendToTab(message) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || tab.id === undefined) throw new Error("No active tab");
+    return chrome.tabs.sendMessage(tab.id, message);
 }
 
-// event listener for clicks
-document.addEventListener("click", (e) => {
-    if(!enabled) return; 
-    if(e.target.closest && e.target.closest('.popup-image')) return; // ignores when user clicks on popup imgs
-    spawnImage(e.clientX, e.clientY);
-}, true);
+const UNREACHABLE = "Can't reach this page. Open a normal website and refresh it.";
 
-// listen for messages from other scripts
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "toggle") {
-        enabled = msg.enabled ?? !enabled;
-        sendResponse({ enabled });
-    } else if (msg.type === "clear") {
-        document.querySelectorAll(".popup-image").forEach((el) => el.remove());
-        sendResponse({ cleared: true });
+async function applyEnabled(enabled) {
+    try {
+        const reply = await sendToTab({ type: "toggle", enabled });
+        setStatus(reply && reply.enabled ? "Effects are ON 🎉" : "Effects are off");
+    } catch {
+        setStatus(UNREACHABLE);
     }
-});
+}
+
+async function init() {
+    const settings = await chrome.storage.local.get(DEFAULTS);
+
+    for (const key of Object.keys(DEFAULTS)) {
+        const el = document.getElementById(key);
+        if (!el) continue;
+
+        // Show the saved value.
+        if (el.type === "checkbox") el.checked = settings[key];
+        else el.value = settings[key];
+
+        // Save whenever it changes.
+        el.addEventListener("input", async () => {
+            const value =
+                el.type === "checkbox" ? el.checked :
+                el.type === "range" ? Number(el.value) :
+                el.value;
+            await chrome.storage.local.set({ [key]: value });
+            if (key === "enabled") applyEnabled(value);
+        });
+    }
+
+    // Make the current tab match the saved on/off setting.
+    applyEnabled(settings.enabled);
+
+    document.getElementById("clear").addEventListener("click", async () => {
+        try {
+            await sendToTab({ type: "clear" });
+            setStatus("Cleared 🧹");
+        } catch {
+            setStatus(UNREACHABLE);
+        }
+    });
+}
+
+init();

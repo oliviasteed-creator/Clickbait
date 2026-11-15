@@ -11,6 +11,31 @@ const MEMES = [
     "kermit.png"
 ];
 
+// ---------- Sound effects (custom files only) ----------
+// Files live in extension/sounds/. To add one: drop it in that folder and
+// add its name here. manifest.json already allows everything in sounds/.
+const SOUND_FILES = [
+    "35f4997a-677c-4e79-a2b8-f33b688d5233.mp3",
+    "707db471-c834-494e-a3d9-ada985203ef6.mp3",
+    "7734a0d8-d26f-49b1-9b87-45e8272b1183.mp3",
+    "fb64d9f6-7584-4a3f-930b-ba6094d37fd5.mp3",
+];
+
+// Volume comes from the popup's slider (chrome.storage.local), 0..1.
+let volume = 0.5;
+chrome.storage.local.get({ volume }, (s) => { volume = s.volume; });
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.volume) volume = changes.volume.newValue;
+});
+
+function playRandomSound() {
+    if (!SOUND_FILES.length) return;
+    const file = SOUND_FILES[Math.floor(Math.random() * SOUND_FILES.length)];
+    const audio = new Audio(chrome.runtime.getURL("sounds/" + file));
+    audio.volume = volume;
+    audio.play().catch((err) => console.warn("[FX] sound failed:", file, err.message));
+}
+
 //xp window style... ignore that it is in content.js LOL
 function injectStyles() {
     if (document.getElementById("xp-popup-styles")) return;
@@ -116,6 +141,7 @@ function makeButton(cls) {
 function spawnImage() {
     if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
     injectStyles();
+    playRandomSound();
 
     const box = document.createElement("div");
     box.className = "popup-image";
@@ -168,6 +194,12 @@ function spawnImage() {
 
 // click listener
 document.addEventListener("click", (e) => {
+    // After the extension is reloaded, this old copy of the script can't use
+    // chrome.* anymore ("Extension context invalidated"). Stop quietly.
+    if (!chrome.runtime?.id) {
+        console.info("[FX] Extension was reloaded. Refresh this page to use it again.");
+        return;
+    }
     if (!enabled) return;
     if (e.target.closest && e.target.closest(".popup-image")) return;
     spawnImage();
