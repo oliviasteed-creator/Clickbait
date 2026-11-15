@@ -1,7 +1,15 @@
 let enabled = true;
 const MAX_POPUPS = 60;
 
-const MEMES = ["cat_image.jpeg"];
+const MEMES = [
+    "cat_image.jpeg",
+    "cat2.jpg",
+    "cat3.jpg",
+    "dog1.jpg",
+    "dog2.jpg",
+    "horse1.jpg",
+    "kermit.png"
+];
 
 //xp window style... ignore that it is in content.js LOL
 function injectStyles() {
