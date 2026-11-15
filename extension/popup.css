@@ -40,7 +40,50 @@ button {
     color: #666;
 }
 
+#stats {
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    border: 2px dashed #e0457b;
+    border-radius: 8px;
+    background: #fff4f8;
+}
+
+#stats h2 {
+    font-size: 13px;
+    margin: 0 0 6px;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    margin: 3px 0;
+}
+
+.stat b {
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 110px;
+}
+
+#statRank {
+    margin: 6px 0 0;
+    font-weight: bold;
+    color: #e0457b;
+    text-align: center;
+}
+
+button.small {
+    margin-top: 6px;
+    padding: 3px;
+    font-size: 11px;
+}
+
 @media (prefers-color-scheme: dark) {
     body { background: #222; color: #eee; }
     #status { color: #aaa; }
+    #stats { background: #3a1f2a; }
 }
