@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- OWNER: Person C (Platform & UI) — the settings panel that opens from the toolbar icon. -->
+<!-- Popup: the settings panel that opens from the toolbar icon. -->
 <html>
 <head>
     <meta charset="utf-8" />
@@ -9,38 +9,36 @@
     <h1>Random Click FX</h1>
 
     <label class="row">
-    <span>Enabled</span>
-    <input type="checkbox" id="enabled" />
+        <span>Enabled</span>
+        <input type="checkbox" id="enabled" />
     </label>
 
     <label class="row">
-    <span>Volume</span>
-    <input type="range" id="volume" min="0" max="1" step="0.05" />
+        <span>Volume</span>
+        <input type="range" id="volume" min="0" max="1" step="0.05" />
     </label>
 
     <label class="row">
-    <span>Sounds</span>
-    <select id="soundPack">
-        <option value="synth">Synth</option>
-        <option value="files">Sound files</option>
-    </select>
+        <span>Sounds</span>
+        <select id="soundPack">
+            <option value="synth">Synth</option>
+            <option value="files">Sound files</option>
+        </select>
     </label>
 
     <label class="row">
-    <span>Images</span>
-    <select id="imagePack">
-        <option value="mixed">Mixed</option>
-        <option value="emoji">Emoji</option>
-        <option value="shapes">Shapes</option>
-        <option value="files">Image files</option>
-    </select>
+        <span>Images</span>
+        <select id="imagePack">
+            <option value="mixed">Mixed</option>
+            <option value="emoji">Emoji</option>
+            <option value="shapes">Shapes</option>
+            <option value="files">Image files</option>
+        </select>
     </label>
 
-    <!-- TODO(C): "test" button, site blocklist, theme picker -->
-    <button id="test">Test it!</button>
+    <button id="clear">Clear images</button>
     <p id="status"></p>
 
-    <script src="../shared/settings.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>
