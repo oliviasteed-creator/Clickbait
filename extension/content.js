@@ -1,6 +1,5 @@
 let enabled = true;
 const MAX_POPUPS = 60;
-
 const MEMES = [
     "cat_image.jpeg",
     "cat2.jpg",
@@ -11,10 +10,11 @@ const MEMES = [
     "kermit.png"
 ];
 
-// Fleeing behavior settings
+// fading 
 const FLEE_RADIUS = 280;
 const MAX_SPEED = 20;
-const IDLE_CLEAR_MS = 15000; // 15s of no mouse movement → clear all
+const IDLE_CLEAR_MS = 10000;   // stop mouse for 10s → fade everything out
+const FADE_MS = 1200;          // how long the fade animation lasts
 
 let mouseX = -9999;
 let mouseY = -9999;
@@ -22,8 +22,8 @@ let lastMouseMoveTime = Date.now();
 const activeFleeingBoxes = new Set();
 let animationRunning = false;
 let idleCheckInterval = null;
+let isFadingOut = false;
 
-// Track cursor + last movement time
 window.addEventListener("mousemove", (e) => {
     mouseX = e.clientX;
     mouseY = e.clientY;
@@ -31,17 +31,48 @@ window.addEventListener("mousemove", (e) => {
 }, { capture: true, passive: true });
 
 function clearAllPopups() {
+    isFadingOut = false;
     activeFleeingBoxes.clear();
     document.querySelectorAll(".popup-image").forEach((el) => el.remove());
 }
 
-function updateFleeingPopups() {
-    const now = Date.now();
+function fadeOutAllPopups() {
+    if (isFadingOut) return;
+    const boxes = Array.from(document.querySelectorAll(".popup-image"));
+    if (boxes.length === 0) return;
 
-    // Idle timeout
-    if (now - lastMouseMoveTime >= IDLE_CLEAR_MS) {
-        clearAllPopups();
+    isFadingOut = true;
+    activeFleeingBoxes.clear();
+    animationRunning = false;
+
+    boxes.forEach((box) => {
+        // Force reflow so the transition actually runs
+        box.style.transition = "none";
+        box.style.opacity = "1";
+        void box.offsetWidth;
+
+        box.style.transition = `opacity ${FADE_MS}ms ease-out`;
+        box.style.opacity = "0";
+        box.style.pointerEvents = "none";
+    });
+
+    setTimeout(() => {
+        boxes.forEach((box) => {
+            if (box.parentNode) box.remove();
+        });
+        isFadingOut = false;
+    }, FADE_MS + 100);
+}
+
+function updateFleeingPopups() {
+    if (isFadingOut) {
         animationRunning = false;
+        return;
+    }
+
+    const now = Date.now();
+    if (now - lastMouseMoveTime >= IDLE_CLEAR_MS) {
+        fadeOutAllPopups();
         return;
     }
 
@@ -67,7 +98,6 @@ function updateFleeingPopups() {
             box._posX += (dx / distance) * speed;
             box._posY += (dy / distance) * speed;
 
-            // Clamp inside viewport
             const maxX = Math.max(0, window.innerWidth - width);
             const maxY = Math.max(0, window.innerHeight - height);
             box._posX = Math.min(Math.max(0, box._posX), maxX);
@@ -86,7 +116,7 @@ function updateFleeingPopups() {
 }
 
 function startFleeLoop() {
-    if (!animationRunning) {
+    if (!animationRunning && !isFadingOut) {
         animationRunning = true;
         requestAnimationFrame(updateFleeingPopups);
     }
@@ -95,10 +125,14 @@ function startFleeLoop() {
 function ensureIdleChecker() {
     if (idleCheckInterval) return;
     idleCheckInterval = setInterval(() => {
-        if (Date.now() - lastMouseMoveTime >= IDLE_CLEAR_MS && activeFleeingBoxes.size > 0) {
-            clearAllPopups();
+        if (
+            !isFadingOut &&
+            Date.now() - lastMouseMoveTime >= IDLE_CLEAR_MS &&
+            document.querySelectorAll(".popup-image").length > 0
+        ) {
+            fadeOutAllPopups();
         }
-    }, 1000);
+    }, 400);
 }
 
 function injectStyles() {
@@ -110,12 +144,14 @@ function injectStyles() {
         position: fixed !important;
         z-index: 2147483647;
         visibility: hidden;
+        opacity: 1;
         box-sizing: border-box;
         background: #0054e3;
         padding: 0 3px 3px 3px;
         border-radius: 8px 8px 0 0;
         box-shadow: 2px 2px 6px rgba(0,0,0,0.5);
         font-family: Tahoma, "Trebuchet MS", sans-serif;
+        will-change: opacity, left, top;
     }
     .popup-image .xp-titlebar {
         height: 28px;
@@ -200,11 +236,11 @@ function makeButton(cls) {
 }
 
 function spawnImage(clickX, clickY) {
+    if (isFadingOut) return;
     if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
     injectStyles();
     ensureIdleChecker();
 
-    // Seed mouse from the click
     if (typeof clickX === "number" && typeof clickY === "number") {
         mouseX = clickX;
         mouseY = clickY;
@@ -230,7 +266,13 @@ function spawnImage(clickX, clickY) {
     closeBtn.onclick = (e) => {
         e.stopPropagation();
         activeFleeingBoxes.delete(box);
-        box.remove();
+        box.style.transition = "none";
+        box.style.opacity = "1";
+        void box.offsetWidth;
+        box.style.transition = "opacity 0.3s ease-out";
+        box.style.opacity = "0";
+        box.style.pointerEvents = "none";
+        setTimeout(() => box.remove(), 320);
     };
     buttons.append(minBtn, maxBtn, closeBtn);
     titlebar.appendChild(buttons);
@@ -249,6 +291,7 @@ function spawnImage(clickX, clickY) {
         box.style.left = Math.round(box._posX) + "px";
         box.style.top = Math.round(box._posY) + "px";
         box.style.visibility = "visible";
+        box.style.opacity = "1";
 
         activeFleeingBoxes.add(box);
         startFleeLoop();
@@ -264,19 +307,16 @@ function spawnImage(clickX, clickY) {
     document.body.appendChild(box);
 }
 
-// Click → spawn (skip clicks on existing popups)
 document.addEventListener("click", (e) => {
     if (!enabled) return;
     if (e.target.closest && e.target.closest(".popup-image")) return;
     spawnImage(e.clientX, e.clientY);
 }, true);
 
-// Load enabled state from storage
 chrome.storage.local.get({ enabled: true }, (data) => {
     enabled = data.enabled;
 });
 
-// Messages from popup / background
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "toggle") {
         enabled = msg.enabled ?? !enabled;
