@@ -11,7 +11,9 @@ const MEMES = [
     "and_i_walk_in.jpeg",
     "meme1.gif",
     "meme2.gif",
-    "meme3.gif"
+    "meme3.gif",
+    "meme4.gif",
+    "meme5.gif"
 ];
 
 // sound effects
