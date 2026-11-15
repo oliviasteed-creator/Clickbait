@@ -32,7 +32,7 @@ function playRandomSound() {
     audio.play().catch((err) => console.warn("[FX] sound failed:", file, err.message));
 }
 
-// ---------- Fleeing + fading behavior ----------
+// Fleeing behavior settings
 const FLEE_RADIUS = 280;
 const MAX_SPEED = 20;
 const IDLE_CLEAR_MS = 10000;   // stop mouse for 10s → fade everything out
