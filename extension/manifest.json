@@ -1,33 +1,38 @@
 {
-  "manifest_version": 3,
-  "name": "Random Click FX",
-  "version": "1.0",
-  "description": "Built as a team!",
+    "manifest_version": 3,
+    "name": "Team Extension",
+    "version": "1.0",
+    "description": "Built as a team!",
 
-  "permissions": [
-    "storage"
-  ],
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
 
-  "background": {
-    "service_worker": "background.js"
-  },
+    "host_permissions": [
+        "<all_urls>"
+    ],
 
-  "action": {
-    "default_popup": "popup.html"
-  },
+    "background": {
+        "service_worker": "background.js"
+    },
 
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["shared/settings.js", "content/content.js"],
-      "css": ["content/content.css"]
-    }
-  ],
+    "action": {
+        "default_popup": "popup.html" 
+    },
 
-  "web_accessible_resources": [
-    {
-      "resources": ["images/*", "sounds/*"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["shared/settings.js", "content.js"]
+        }
+    ],
+
+    "web_accessible_resources": [
+        {
+            "resources": ["img/*", "boom.mp3"],
+            "matches": ["<all_urls>"]
+        }
+    ]
 }
