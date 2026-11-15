@@ -7,7 +7,7 @@ const MEMES = [
     "dog1.jpg",
     "dog2.jpg",
     "horse1.jpg",
-    "kermit.png"
+    "kermit.png",
     "and_i_walk_in.jpeg"
 ];
 
