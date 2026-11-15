@@ -1,20 +1,23 @@
 let enabled = true;
 const MAX_POPUPS = 100;
-const MEMES = [
-    "cat_image.jpeg",
-    "cat2.jpg",
-    "cat3.jpg",
-    "dog1.jpg",
-    "dog2.jpg",
-    "horse1.jpg",
-    "kermit.png",
-    "and_i_walk_in.jpeg",
-    "meme1.gif",
-    "meme2.gif",
-    "meme3.gif",
-    "meme4.gif",
-    "meme5.gif"
-];
+
+const MEME_PACKS = {
+    mixed: [
+        "cat_image.jpeg", "cat2.jpg", "cat3.jpg",
+        "dog1.jpg", "dog2.jpg", "horse1.jpg", "kermit.png",
+        "and_i_walk_in.jpeg", "meme1.gif", "meme2.gif",
+        "meme3.gif", "meme4.gif", "meme5.gif"
+    ],
+    cats: ["cat_image.jpeg", "cat2.jpg", "cat3.jpg"],
+    dogs: ["dog1.jpg", "dog2.jpg"],
+    gifs: ["meme1.gif", "meme2.gif", "meme3.gif", "meme4.gif", "meme5.gif"]
+};
+
+let currentImagePack = "mixed";
+chrome.storage.local.get({ imagePack: "mixed" }, (s) => { currentImagePack = s.imagePack; });
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.imagePack) currentImagePack = changes.imagePack.newValue;
+});
 
 // sound effects
 const SOUND_FILES = [
@@ -41,8 +44,8 @@ function playRandomSound() {
 // Fleeing behavior settings
 const FLEE_RADIUS = 280;
 const MAX_SPEED = 20;
-const IDLE_CLEAR_MS = 10000;   // stop mouse for 10s → fade everything out
-const FADE_MS = 1200;          // how long the fade animation lasts
+const IDLE_CLEAR_MS = 10000;
+const FADE_MS = 1200;
 
 let mouseX = -9999;
 let mouseY = -9999;
@@ -74,7 +77,6 @@ function fadeOutAllPopups() {
     animationRunning = false;
 
     boxes.forEach((box) => {
-        // Force reflow so the transition actually runs
         box.style.transition = "none";
         box.style.opacity = "1";
         void box.offsetWidth;
@@ -263,8 +265,6 @@ function makeButton(cls) {
     return b;
 }
 
-// ---------- Stupid stats (shown in the popup) ----------
-// Counts every popup spawned, in total and per website.
 function recordStat() {
     const site = location.hostname || "unknown";
     chrome.storage.local.get({ count: 0, sites: {} }, (s) => {
@@ -321,7 +321,8 @@ function spawnImage(clickX, clickY) {
     body.className = "xp-body";
 
     const img = document.createElement("img");
-    const choice = MEMES[Math.floor(Math.random() * MEMES.length)];
+    const pool = MEME_PACKS[currentImagePack] || MEME_PACKS.mixed;
+    const choice = pool[Math.floor(Math.random() * pool.length)];
 
     img.onload = () => {
         const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
@@ -348,10 +349,7 @@ function spawnImage(clickX, clickY) {
 }
 
 document.addEventListener("click", (e) => {
-    if (!chrome.runtime?.id) {
-        console.info("[FX] Extension was reloaded. Refresh this page to use it again.");
-        return;
-    }
+    if (!chrome.runtime?.id) return;
     if (!enabled) return;
     if (e.target.closest && e.target.closest(".popup-image")) return;
     spawnImage(e.clientX, e.clientY);
@@ -360,13 +358,13 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
     if (!chrome.runtime?.id) return;
     if (!enabled) return;
-    // skip pure modifiers so Shift/Ctrl alone don't fire
     if (["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(e.key)) return;
     spawnImage(
         mouseX > 0 ? mouseX : window.innerWidth / 2,
         mouseY > 0 ? mouseY : window.innerHeight / 2
     );
 }, true);
+
 chrome.storage.local.get({ enabled: true }, (data) => {
     enabled = data.enabled;
 });
