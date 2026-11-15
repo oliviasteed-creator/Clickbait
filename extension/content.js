@@ -1,5 +1,5 @@
 let enabled = true;
-const MAX_POPUPS = 100;
+const MAX_POPUPS = 60;
 const MEMES = [
     "cat_image.jpeg",
     "cat2.jpg",
@@ -7,42 +7,38 @@ const MEMES = [
     "dog1.jpg",
     "dog2.jpg",
     "horse1.jpg",
-    "kermit.png",
-    "and_i_walk_in.jpeg",
-    "meme1.gif",
-    "meme2.gif",
-    "meme3.gif",
-    "meme4.gif",
-    "meme5.gif"
+    "kermit.png"
 ];
 
-// sound effects
 const SOUND_FILES = [
     "fah.mp3",
     "goofy.mp3",
     "uwu.mp3",
     "vineboom.mp3",
-]; 
+];
 
 let volume = 0.5;
-chrome.storage.local.get({ volume }, (s) => { volume = s.volume; });
-chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.volume) volume = changes.volume.newValue;
-});
+try {
+    chrome.storage.local.get({ volume }, (s) => { volume = s.volume; });
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes.volume) volume = changes.volume.newValue;
+    });
+} catch (_) {}
 
 function playRandomSound() {
     if (!SOUND_FILES.length) return;
-    const file = SOUND_FILES[Math.floor(Math.random() * SOUND_FILES.length)];
-    const audio = new Audio(chrome.runtime.getURL("sounds/" + file));
-    audio.volume = volume;
-    audio.play().catch((err) => console.warn("[FX] sound failed:", file, err.message));
+    try {
+        const file = SOUND_FILES[Math.floor(Math.random() * SOUND_FILES.length)];
+        const audio = new Audio(chrome.runtime.getURL("sounds/" + file));
+        audio.volume = volume;
+        audio.play().catch(() => {});
+    } catch (_) {}
 }
 
-// Fleeing behavior settings
 const FLEE_RADIUS = 280;
 const MAX_SPEED = 20;
-const IDLE_CLEAR_MS = 10000;   // stop mouse for 10s → fade everything out
-const FADE_MS = 1200;          // how long the fade animation lasts
+const IDLE_CLEAR_MS = 10000;
+const FADE_MS = 1200;
 
 let mouseX = -9999;
 let mouseY = -9999;
@@ -52,20 +48,31 @@ let animationRunning = false;
 let idleCheckInterval = null;
 let isFadingOut = false;
 
-window.addEventListener("mousemove", (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    lastMouseMoveTime = Date.now();
-}, { capture: true, passive: true });
+// Only the top frame owns the visible popups (avoids duplicates in iframes)
+const isTop = (window === window.top);
+
+function trackMouse(e) {
+    try {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        lastMouseMoveTime = Date.now();
+    } catch (_) {}
+}
+
+window.addEventListener("mousemove", trackMouse, { capture: true, passive: true });
 
 function clearAllPopups() {
+    if (!isTop) {
+        try { window.top.postMessage({ type: "fx-clear" }, "*"); } catch (_) {}
+        return;
+    }
     isFadingOut = false;
     activeFleeingBoxes.clear();
     document.querySelectorAll(".popup-image").forEach((el) => el.remove());
 }
 
 function fadeOutAllPopups() {
-    if (isFadingOut) return;
+    if (!isTop || isFadingOut) return;
     const boxes = Array.from(document.querySelectorAll(".popup-image"));
     if (boxes.length === 0) return;
 
@@ -74,32 +81,27 @@ function fadeOutAllPopups() {
     animationRunning = false;
 
     boxes.forEach((box) => {
-        // Force reflow so the transition actually runs
         box.style.transition = "none";
         box.style.opacity = "1";
         void box.offsetWidth;
-
         box.style.transition = `opacity ${FADE_MS}ms ease-out`;
         box.style.opacity = "0";
         box.style.pointerEvents = "none";
     });
 
     setTimeout(() => {
-        boxes.forEach((box) => {
-            if (box.parentNode) box.remove();
-        });
+        boxes.forEach((box) => { if (box.parentNode) box.remove(); });
         isFadingOut = false;
     }, FADE_MS + 100);
 }
 
 function updateFleeingPopups() {
-    if (isFadingOut) {
+    if (!isTop || isFadingOut) {
         animationRunning = false;
         return;
     }
 
-    const now = Date.now();
-    if (now - lastMouseMoveTime >= IDLE_CLEAR_MS) {
+    if (Date.now() - lastMouseMoveTime >= IDLE_CLEAR_MS) {
         fadeOutAllPopups();
         return;
     }
@@ -144,6 +146,7 @@ function updateFleeingPopups() {
 }
 
 function startFleeLoop() {
+    if (!isTop) return;
     if (!animationRunning && !isFadingOut) {
         animationRunning = true;
         requestAnimationFrame(updateFleeingPopups);
@@ -151,7 +154,7 @@ function startFleeLoop() {
 }
 
 function ensureIdleChecker() {
-    if (idleCheckInterval) return;
+    if (!isTop || idleCheckInterval) return;
     idleCheckInterval = setInterval(() => {
         if (
             !isFadingOut &&
@@ -164,6 +167,7 @@ function ensureIdleChecker() {
 }
 
 function injectStyles() {
+    if (!isTop) return;
     if (document.getElementById("xp-popup-styles")) return;
     const style = document.createElement("style");
     style.id = "xp-popup-styles";
@@ -201,10 +205,7 @@ function injectStyles() {
         text-shadow: 1px 1px 0 #0a246a;
         user-select: none;
     }
-    .popup-image .xp-buttons {
-        display: flex;
-        gap: 2px;
-    }
+    .popup-image .xp-buttons { display: flex; gap: 2px; }
     .popup-image .xp-btn {
         position: relative;
         box-sizing: border-box;
@@ -263,27 +264,26 @@ function makeButton(cls) {
     return b;
 }
 
-// ---------- Stupid stats (shown in the popup) ----------
-// Counts every popup spawned, in total and per website.
-function recordStat() {
-    const site = location.hostname || "unknown";
-    chrome.storage.local.get({ count: 0, sites: {} }, (s) => {
-        s.sites[site] = (s.sites[site] || 0) + 1;
-        chrome.storage.local.set({ count: s.count + 1, sites: s.sites });
-    });
+function spawnImageInTop(x, y) {
+    if (!isTop) {
+        try {
+            window.top.postMessage({ type: "fx-spawn", x, y }, "*");
+        } catch (_) {}
+        return;
+    }
+    doSpawn(x, y);
 }
 
-function spawnImage(clickX, clickY) {
+function doSpawn(x, y) {
     if (isFadingOut) return;
     if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
     injectStyles();
     ensureIdleChecker();
     playRandomSound();
-    recordStat();
 
-    if (typeof clickX === "number" && typeof clickY === "number") {
-        mouseX = clickX;
-        mouseY = clickY;
+    if (typeof x === "number" && typeof y === "number" && x > 0 && y > 0) {
+        mouseX = x;
+        mouseY = y;
         lastMouseMoveTime = Date.now();
     }
 
@@ -347,40 +347,59 @@ function spawnImage(clickX, clickY) {
     document.body.appendChild(box);
 }
 
+// Top frame listens for spawn/clear from iframes (Google Docs, etc.)
+if (isTop) {
+    window.addEventListener("message", (e) => {
+        if (!e.data || typeof e.data !== "object") return;
+        if (e.data.type === "fx-spawn") {
+            doSpawn(e.data.x, e.data.y);
+        } else if (e.data.type === "fx-clear") {
+            clearAllPopups();
+        }
+    });
+}
+
+function onUserAction(x, y) {
+    if (!chrome.runtime?.id) return;
+    if (!enabled) return;
+    spawnImageInTop(x, y);
+}
+
+// Click
 document.addEventListener("click", (e) => {
-    if (!chrome.runtime?.id) {
-        console.info("[FX] Extension was reloaded. Refresh this page to use it again.");
-        return;
-    }
+    if (!chrome.runtime?.id) return;
     if (!enabled) return;
     if (e.target.closest && e.target.closest(".popup-image")) return;
-    spawnImage(e.clientX, e.clientY);
+    onUserAction(e.clientX, e.clientY);
 }, true);
 
+// Any key (typing in Google Docs, inputs, etc.)
 document.addEventListener("keydown", (e) => {
     if (!chrome.runtime?.id) return;
     if (!enabled) return;
-    // skip pure modifiers so Shift/Ctrl alone don't fire
     if (["Shift", "Control", "Alt", "Meta", "CapsLock"].includes(e.key)) return;
-    spawnImage(
-        mouseX > 0 ? mouseX : window.innerWidth / 2,
-        mouseY > 0 ? mouseY : window.innerHeight / 2
-    );
+    const x = mouseX > 0 ? mouseX : (window.innerWidth / 2);
+    const y = mouseY > 0 ? mouseY : (window.innerHeight / 2);
+    onUserAction(x, y);
 }, true);
-chrome.storage.local.get({ enabled: true }, (data) => {
-    enabled = data.enabled;
-});
- 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "toggle") {
-        enabled = msg.enabled ?? !enabled;
-        sendResponse({ enabled });
-    } else if (msg.type === "clear") {
-        clearAllPopups();
-        sendResponse({ cleared: true });
-    } else if (msg.type === "test-fx") {
-        spawnImage(window.innerWidth / 2, window.innerHeight / 2);
-        sendResponse({ ok: true });
-    }
-    return true;
-});
+
+
+try {
+    chrome.storage.local.get({ enabled: true }, (data) => { enabled = data.enabled; });
+} catch (_) {}
+
+try {
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+        if (msg.type === "toggle") {
+            enabled = msg.enabled ?? !enabled;
+            sendResponse({ enabled });
+        } else if (msg.type === "clear") {
+            clearAllPopups();
+            sendResponse({ cleared: true });
+        } else if (msg.type === "test-fx") {
+            onUserAction(window.innerWidth / 2, window.innerHeight / 2);
+            sendResponse({ ok: true });
+        }
+        return true;
+    });
+} catch (_) {}
