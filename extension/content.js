@@ -1,14 +1,24 @@
 let enabled = true;
-const MAX_POPUPS = 60;
-const MEMES = [
-    "cat_image.jpeg",
-    "cat2.jpg",
-    "cat3.jpg",
-    "dog1.jpg",
-    "dog2.jpg",
-    "horse1.jpg",
-    "kermit.png"
-];
+
+const MAX_POPUPS = 100;
+
+const MEME_PACKS = {
+    mixed: [
+        "cat_image.jpeg", "cat2.jpg", "cat3.jpg",
+        "dog1.jpg", "dog2.jpg", "horse1.jpg", "kermit.png",
+        "and_i_walk_in.jpeg", "meme1.gif", "meme2.gif",
+        "meme3.gif", "meme4.gif", "meme5.gif"
+    ],
+    cats: ["cat_image.jpeg", "cat2.jpg", "cat3.jpg"],
+    dogs: ["dog1.jpg", "dog2.jpg"],
+    gifs: ["meme1.gif", "meme2.gif", "meme3.gif", "meme4.gif", "meme5.gif"]
+};
+
+let currentImagePack = "mixed";
+chrome.storage.local.get({ imagePack: "mixed" }, (s) => { currentImagePack = s.imagePack; });
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.imagePack) currentImagePack = changes.imagePack.newValue;
+});
 
 const SOUND_FILES = [
     "fah.mp3",
@@ -264,6 +274,7 @@ function makeButton(cls) {
     return b;
 }
 
+<<<<<<< HEAD
 function spawnImageInTop(x, y) {
     if (!isTop) {
         try {
@@ -272,6 +283,14 @@ function spawnImageInTop(x, y) {
         return;
     }
     doSpawn(x, y);
+=======
+function recordStat() {
+    const site = location.hostname || "unknown";
+    chrome.storage.local.get({ count: 0, sites: {} }, (s) => {
+        s.sites[site] = (s.sites[site] || 0) + 1;
+        chrome.storage.local.set({ count: s.count + 1, sites: s.sites });
+    });
+>>>>>>> aa5834a6e3e8c431762ba8f2e07a6b203c1a8f48
 }
 
 function doSpawn(x, y) {
@@ -321,7 +340,8 @@ function doSpawn(x, y) {
     body.className = "xp-body";
 
     const img = document.createElement("img");
-    const choice = MEMES[Math.floor(Math.random() * MEMES.length)];
+    const pool = MEME_PACKS[currentImagePack] || MEME_PACKS.mixed;
+    const choice = pool[Math.floor(Math.random() * pool.length)];
 
     img.onload = () => {
         const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
@@ -383,6 +403,7 @@ document.addEventListener("keydown", (e) => {
     onUserAction(x, y);
 }, true);
 
+<<<<<<< HEAD
 
 try {
     chrome.storage.local.get({ enabled: true }, (data) => { enabled = data.enabled; });
@@ -403,3 +424,22 @@ try {
         return true;
     });
 } catch (_) {}
+=======
+chrome.storage.local.get({ enabled: true }, (data) => {
+    enabled = data.enabled;
+});
+ 
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "toggle") {
+        enabled = msg.enabled ?? !enabled;
+        sendResponse({ enabled });
+    } else if (msg.type === "clear") {
+        clearAllPopups();
+        sendResponse({ cleared: true });
+    } else if (msg.type === "test-fx") {
+        spawnImage(window.innerWidth / 2, window.innerHeight / 2);
+        sendResponse({ ok: true });
+    }
+    return true;
+});
+>>>>>>> aa5834a6e3e8c431762ba8f2e07a6b203c1a8f48
