@@ -5,40 +5,50 @@
     <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-    <h1>Random Click FX</h1>
+    <div class="xp-titlebar">
+        <span class="xp-icon">&#9734;</span>
+        <span class="xp-title">Random Click FX</span>
+        <div class="xp-buttons">
+            <button class="xp-btn xp-min" tabindex="-1"></button>
+            <button class="xp-btn xp-max" tabindex="-1"></button>
+            <button class="xp-btn xp-close" id="xpClose" tabindex="-1"></button>
+        </div>
+    </div>
 
-    <section id="stats">
-        <h2>📊 Official Damage Report</h2>
-        <div class="stat"><span>🐱 Creatures summoned</span><b id="statCount">0</b></div>
-        <div class="stat"><span>🔥 Calories burned</span><b id="statCalories">0</b></div>
-        <div class="stat"><span>🍇 Equivalent to</span><b id="statGrapes">0 grapes</b></div>
-        <div class="stat"><span>🌍 Most cursed site</span><b id="statSite">none yet</b></div>
-        <p id="statRank">Rank: Innocent Bystander</p>
-        <button id="resetStats" class="small">Reset stats</button>
-    </section>
+    <div class="xp-body">
+        <section id="stats">
+            <h2>Official Damage Report</h2>
+            <div class="stat"><span>Creatures summoned</span><b id="statCount">0</b></div>
+            <div class="stat"><span>Calories burned</span><b id="statCalories">0</b></div>
+            <div class="stat"><span>Equivalent to</span><b id="statGrapes">0 grapes</b></div>
+            <div class="stat"><span>Most cursed site</span><b id="statSite">none yet</b></div>
+            <p id="statRank">Rank: Innocent Bystander</p>
+            <button id="resetStats" class="small">Reset stats</button>
+        </section>
 
-    <label class="row">
-        <span>Enabled</span>
-        <input type="checkbox" id="enabled" />
-    </label>
+        <label class="row">
+            <span>Enabled</span>
+            <input type="checkbox" id="enabled" />
+        </label>
 
-    <label class="row">
-        <span>Volume</span>
-        <input type="range" id="volume" min="0" max="1" step="0.05" />
-    </label>
+        <label class="row">
+            <span>Volume</span>
+            <input type="range" id="volume" min="0" max="1" step="0.05" />
+        </label>
 
-    <label class="row">
-        <span>Images</span>
-        <select id="imagePack">
-            <option value="mixed">Mixed Chaos</option>
-            <option value="cats">Cats Only</option>
-            <option value="dogs">Dogs Only</option>
-            <option value="gifs">GIFs Only</option>
-        </select>
-    </label>
+        <label class="row">
+            <span>Images</span>
+            <select id="imagePack">
+                <option value="mixed">Mixed Chaos</option>
+                <option value="cats">Cats Only</option>
+                <option value="dogs">Dogs Only</option>
+                <option value="gifs">GIFs Only</option>
+            </select>
+        </label>
 
-    <button id="clear">Clear images</button>
-    <p id="status"></p>
+        <button id="clear">Clear images</button>
+        <p id="status"></p>
+    </div>
 
     <script src="popup.js"></script>
 </body>
