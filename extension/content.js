@@ -10,7 +10,33 @@ const MEMES = [
     "kermit.png"
 ];
 
+<<<<<<< HEAD
 // fading 
+=======
+// ---------- Sound effects (custom files only) ----------
+const SOUND_FILES = [
+    "fah.mp3",
+    "goofy.mp3",
+    "uwu.mp3",
+    "vineboom.mp3",
+];
+
+let volume = 0.5;
+chrome.storage.local.get({ volume }, (s) => { volume = s.volume; });
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.volume) volume = changes.volume.newValue;
+});
+
+function playRandomSound() {
+    if (!SOUND_FILES.length) return;
+    const file = SOUND_FILES[Math.floor(Math.random() * SOUND_FILES.length)];
+    const audio = new Audio(chrome.runtime.getURL("sounds/" + file));
+    audio.volume = volume;
+    audio.play().catch((err) => console.warn("[FX] sound failed:", file, err.message));
+}
+
+// Fleeing behavior settings
+>>>>>>> cdef6d45d1800bbefed184dccf37a9d62d41250b
 const FLEE_RADIUS = 280;
 const MAX_SPEED = 20;
 const IDLE_CLEAR_MS = 10000;   // stop mouse for 10s → fade everything out
@@ -240,6 +266,7 @@ function spawnImage(clickX, clickY) {
     if (document.querySelectorAll(".popup-image").length >= MAX_POPUPS) return;
     injectStyles();
     ensureIdleChecker();
+    playRandomSound();
 
     if (typeof clickX === "number" && typeof clickY === "number") {
         mouseX = clickX;
@@ -308,6 +335,10 @@ function spawnImage(clickX, clickY) {
 }
 
 document.addEventListener("click", (e) => {
+    if (!chrome.runtime?.id) {
+        console.info("[FX] Extension was reloaded. Refresh this page to use it again.");
+        return;
+    }
     if (!enabled) return;
     if (e.target.closest && e.target.closest(".popup-image")) return;
     spawnImage(e.clientX, e.clientY);
