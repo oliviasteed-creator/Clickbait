@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Team Extension",
+    "name": "memeity",
     "version": "1.0",
-    "description": "Built as a team!",
+    "description": "built by olivia, ryan, and kelso",
 
     "permissions": [
         "activeTab",
